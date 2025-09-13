@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fatec_app/core/theme/app_colors.dart';
+import 'package:fatec_app/core/services/firestore_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +13,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late PageController _bannerPageController;
   Timer? _timer;
+  List<dynamic> _highlights = [];
+  bool _isLoading = true;
 
   // Lista de cursos com ícones
   static const List<Map<String, dynamic>> _courses = [
@@ -47,6 +50,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _bannerPageController = PageController();
     _startAutoScroll();
+    _loadHighlights();
   }
 
   @override
@@ -60,7 +64,7 @@ class _HomePageState extends State<HomePage> {
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_bannerPageController.hasClients) {
         final currentPage = _bannerPageController.page?.round() ?? 0;
-        final nextPage = (currentPage + 1) % 5; // 5 banners
+        final nextPage = (currentPage + 1) % _highlights.length; // Usar quantidade de highlights
         _bannerPageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 500),
@@ -68,6 +72,75 @@ class _HomePageState extends State<HomePage> {
         );
       }
     });
+  }
+
+  Future<void> _loadHighlights() async {
+    try {
+      // Primeiro, imprime todos os dados do documento
+      await FirestoreService.printHomeData();
+      
+      // Depois busca especificamente os highlights
+      final highlights = await FirestoreService.getHighlights();
+      
+      if (mounted) {
+        setState(() {
+          _highlights = highlights ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildErrorBanner(int index, dynamic highlight) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image_not_supported,
+              size: 32,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              highlight is Map<String, dynamic> && highlight.containsKey('title')
+                  ? highlight['title']
+                  : 'Destaque ${index + 1}',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (highlight is Map<String, dynamic> && highlight.containsKey('description'))
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Text(
+                  highlight['description'],
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -215,61 +288,72 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 120,
-                    child: PageView.builder(
-                      controller: _bannerPageController,
-                      itemCount: 5, // 5 banners mockados
-                      itemBuilder: (context, index) {
-                        return Container(
-                          height: 60,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              'assets/mock/banner-example.png',
-                              fit: BoxFit.fill,
-                              width: double.infinity,
-                              
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceVariant,
-                                    borderRadius: BorderRadius.circular(12),
+                    height: 140,
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(),
+                          )
+                        : _highlights.isEmpty
+                            ? Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.grey.withOpacity(0.3),
+                                    width: 1,
                                   ),
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.image_not_supported,
-                                          size: 32,
-                                          color: Theme.of(context).colorScheme.primary,
+                                ),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        size: 32,
+                                        color: AppColors.primary,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Nenhum destaque encontrado',
+                                        style: TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w500,
                                         ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Banner ${index + 1}',
-                                          style: TextStyle(
-                                            color: Theme.of(context).colorScheme.primary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : PageView.builder(
+                                controller: _bannerPageController,
+                                itemCount: _highlights.length,
+                                itemBuilder: (context, index) {
+                                  final highlight = _highlights[index];
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.grey.withOpacity(0.3),
+                                        width: 1,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child:  highlight.contains('https')
+                                          ? Image.network(
+                                              highlight,
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return _buildErrorBanner(index, highlight);
+                                              },
+                                            )
+                                          : _buildErrorBanner(index, highlight),
+                                    ),
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),

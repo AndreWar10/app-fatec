@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "429224056461",
+    "project_id": "fatec-app-99547",
+    "storage_bucket": "fatec-app-99547.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:429224056461:android:5ac931656194e2e77374c4",
+        "android_client_info": {
+          "package_name": "com.example.fatec_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK7zWtEvXovTdAq7mTPJF6COVE6FYz7tU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
