@@ -1,11 +1,3 @@
-
-# FVM Version Cache
-.fvm/
-.history/
-.fvmrc
-.vscode/
-fatec_app/.metadata
-
 # Miscellaneous
 *.class
 *.log
@@ -41,6 +33,8 @@ migrate_working_dir/
 .pub/
 /build/
 
+.metadata
+
 # Symbolication related
 app.*.symbols
 
@@ -51,3 +45,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase
+firebase.json
+lib/firebase_options.dart
+
+# Generated files
+**/generated_plugin_registrant.*
+**/GeneratedPluginRegistrant.*
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
